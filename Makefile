@@ -1,42 +1,14 @@
-APP?=ADASModel
+LF_MAIN ?= Smoke
+SRC_GEN_PATH ?= ./src-gen/$(LF_MAIN)
 
-ifeq ($(APP), SimpleConnection)
-	FUNC?=_sinkreaction_function_0 
-else ifeq ($(APP), ScheduleTest)
-	FUNC?=_sinkreaction_function_0
-else ifeq ($(APP), ADASModel)
-	FUNC?=_adasprocessorreaction_function_0
+ifeq ($(MAKECMDGOALS),all)
+  _ :=  $(shell $(REACTOR_UC_PATH)/lfc/bin/lfc-dev src/$(LF_MAIN).lf)
 endif
 
-SRC_DIR=$(CURDIR)/src/static/patmos
-DEST_DIR=$(CURDIR)/src-gen/static/$(APP)
-INCD_DIR=$(CURDIR)/include
-export LF_PROJECT_ROOT:=$(DEST_DIR)
-export LF_MAIN_TARGET:=$(APP)
-export LF_WCET_FUNC:=$(FUNC)
+include ./src-gen/$(LF_MAIN)/Makefile
 
-.PHONY: gen copy comp all clean wcet sim lin
+SRC = $(REACTOR_UC_PATH)/src/*.c
+SRC += $(patsubst %, $(SRC_GEN_PATH)/%, $(LFC_GEN_SOURCES) $(LFC_GEN_MAIN)) 
 
-all: del gen copy comp lin sim wcet
-gen: 
-	../../bin/lfc-dev src/static/$(APP).lf 
-copy:
-	cp $(SRC_DIR)/lf_patmos_support.h 	  $(DEST_DIR)/include/core/platform/
-	cp $(SRC_DIR)/platform.h              $(DEST_DIR)/include/core/
-	cp $(SRC_DIR)/lf_patmos_support.c     $(DEST_DIR)/core/platform/
-	cp $(SRC_DIR)/lf_atomic_patmos.c      $(DEST_DIR)/core/platform/
-	cp $(SRC_DIR)/lf_patmos_support.h     $(INCD_DIR)/core/platform/
-	cp $(SRC_DIR)/platform.h              $(INCD_DIR)/core
-	cp $(SRC_DIR)/Makefile                $(DEST_DIR)
-comp: 
-	make -C $(DEST_DIR) 
-lin: 
-	$(CURDIR)/bin/$(APP)
-sim: 
-	pasim $(DEST_DIR)/$(APP).elf
-clean:
-	make clean -C $(DEST_DIR)
-del:
-	rm -rf bin include src-gen
-wcet:
-	make wcet -C $(DEST_DIR) 
+all:
+	patmos-clang $(SRC) -I$(REACTOR_UC_PATH)/include -I$(REACTOR_UC_PATH)/external -I$(SRC_GEN_PATH) -DPLATFORM_PATMOS -DSCHEDULER_DYNAMIC -DEVENT_QUEUE_SIZE=$(EVENT_QUEUE_SIZE) -DREACTION_QUEUE_SIZE=$(REACTION_QUEUE_SIZE) -O2 -o $(LF_MAIN)
